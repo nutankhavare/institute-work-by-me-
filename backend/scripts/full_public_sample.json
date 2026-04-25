@@ -1,0 +1,103 @@
+{
+  "organizations": {
+    "id": 10,
+    "name": "ABC Corporate Office",
+    "type": "Office",
+    "email": "office@abc.com",
+    "phone": "9876543210",
+    "website": "https://abc.com",
+    "registration_type": null,
+    "registration_no": null,
+    "registration_date": null,
+    "gst_number": null,
+    "pan_number": null,
+    "tan_number": null,
+    "udyam_no": null,
+    "subscription_plan": null,
+    "status": "Active",
+    "remarks": "Main corporate office",
+    "created_at": "2026-04-20T04:38:43.982Z"
+  },
+  "users": {
+    "id": 9,
+    "email": "admin.office@abc.com",
+    "password": "$2b$10$BjXlTXpTQZU9l2llg.VLBuYWJ.KcBOvu6594pt4F3O4zXW3.Xgghm",
+    "role": "ORG_ADMIN",
+    "org_id": 10,
+    "created_at": "2026-04-20T04:38:43.982Z",
+    "mobile_number": null,
+    "type": null,
+    "firebase_uid": null
+  },
+  "organization_address": {
+    "id": 4,
+    "org_id": 10,
+    "address1": "123 Business Street",
+    "address2": "Tech Park",
+    "landmark": "Near Metro Station",
+    "city": "Bangalore",
+    "district": "Bangalore Urban",
+    "state": "Karnataka",
+    "pincode": "560001"
+  },
+  "organization_contacts": {
+    "id": 4,
+    "org_id": 10,
+    "primary_name": "Ravi Kumar",
+    "primary_email": "ravi@abc.com",
+    "primary_phone": "9000000001",
+    "secondary_name": "Anita Sharma",
+    "secondary_email": "anita@abc.com",
+    "secondary_phone": "9000000002",
+    "emergency_name": null,
+    "emergency_phone": null
+  },
+  "organization_documents": {
+    "id": 1,
+    "org_id": 10,
+    "pan_card": "https://storage-url/pan.pdf",
+    "gst_cert": "https://storage-url/gst.pdf",
+    "registration_cert": "https://storage-url/reg.pdf",
+    "aadhaar_card": "https://storage-url/aadhaar.pdf",
+    "bank_proof": "https://storage-url/bank.pdf",
+    "contract_doc": "https://storage-url/contract.pdf",
+    "insurance_cert": "https://storage-url/insurance.pdf",
+    "safety_sop": "https://storage-url/safety.pdf",
+    "additional_doc": "https://storage-url/extra.pdf"
+  },
+  "organization_institute": {
+    "id": 1,
+    "org_id": 14,
+    "institution_type": null,
+    "affiliation_board": "ICSE",
+    "udise_code": "GVEC2023",
+    "safety_officer_name": "Kavita Rao",
+    "safety_officer_contact": null
+  },
+  "organization_mds": {
+    "id": 1,
+    "org_id": 13,
+    "license_number": "MH-12-DS-3344",
+    "issue_date": "2026-04-08T18:30:00.000Z",
+    "expiry_date": "2026-08-19T18:30:00.000Z",
+    "num_trainers": 7,
+    "num_training_vehicles": 12
+  },
+  "organization_operations": {
+    "id": 1,
+    "org_id": 10,
+    "total_employees": 150,
+    "total_vehicles": 20,
+    "gps_devices": 15,
+    "beacon_devices": 10,
+    "shifts": "2",
+    "branches": "3",
+    "working_hours": "9AM-6PM",
+    "working_days": "Mon-Fri",
+    "num_students": 0,
+    "num_staff": 0,
+    "num_trainers": 0,
+    "num_training_vehicles": 0,
+    "num_drivers": 5
+  }
+}

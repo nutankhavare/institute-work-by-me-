@@ -1,0 +1,128 @@
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
+import { getPool, withTenant } from "../../shared/db";
+import { requireAuth } from "../../shared/auth";
+import { ok, err, preflight } from "../../shared/response";
+import { parseMultipart } from "../../shared/multipart";
+import { uploadToBlob } from "../../shared/blob";
+
+app.http("vehiclesIndex", {
+  route: "vehicles",
+  methods: ["GET", "POST", "OPTIONS"],
+  authLevel: "anonymous",
+  handler: async (req: HttpRequest, ctx: InvocationContext): Promise<HttpResponseInit> => {
+    if (req.method === "OPTIONS") return preflight();
+    let client;
+    try {
+      const auth = requireAuth(req);
+      if ("error" in auth) return err(401, auth.error);
+      const token = auth.user;
+
+      client = await getPool().connect();
+      await withTenant(client, token.org_id);
+
+      if (req.method === "GET") {
+        const url = new URL(req.url);
+        const page = parseInt(url.searchParams.get("page") || "1", 10);
+        const perPage = parseInt(url.searchParams.get("per_page") || "15", 10);
+        const search = url.searchParams.get("search") || null;
+        const status = url.searchParams.get("status") || null;
+        const offset = (page - 1) * perPage;
+
+        const countResult = await client.query(`
+          SELECT COUNT(*) FROM schema1.institute_vehicles
+          WHERE org_id = $1
+            AND ($2::text IS NULL OR status = $2)
+            AND ($3::text IS NULL OR (
+              vehicle_number ILIKE '%' || $3 || '%' OR
+              model ILIKE '%' || $3 || '%' OR
+              manufacturer ILIKE '%' || $3 || '%'
+            ))
+        `, [token.org_id, status, search]);
+        const total = parseInt(countResult.rows[0].count, 10);
+
+        const result = await client.query(`
+          SELECT *
+          FROM schema1.institute_vehicles
+          WHERE org_id = $1
+            AND ($2::text IS NULL OR status = $2)
+            AND ($3::text IS NULL OR (
+              vehicle_number ILIKE '%' || $3 || '%' OR
+              model ILIKE '%' || $3 || '%' OR
+              manufacturer ILIKE '%' || $3 || '%'
+            ))
+          ORDER BY created_at DESC
+          LIMIT $4 OFFSET $5
+        `, [token.org_id, status, search, perPage, offset]);
+
+        return ok({
+          data: result.rows,
+          current_page: page,
+          last_page: Math.ceil(total / perPage),
+          per_page: perPage,
+          total: total,
+          from: total === 0 ? null : offset + 1,
+          to: Math.min(page * perPage, total)
+        });
+      }
+
+      if (req.method === "POST") {
+        const { fields, files } = await parseMultipart(req);
+        
+        const docUploads: Record<string, string | null> = {
+          rc_book_doc: null,
+          insurance_doc: null,
+          fitness_doc: null,
+          pollution_doc: null
+        };
+
+        for (const [key, file] of Object.entries(files)) {
+          if (docUploads[key] !== undefined) {
+            docUploads[key] = await uploadToBlob(file.buffer, file.filename, file.mimetype, 'vehicles');
+          }
+        }
+
+        const result = await client.query(`
+          INSERT INTO schema1.institute_vehicles (
+            org_id, vehicle_number, model, manufacturer, vehicle_type, year, 
+            fuel_type, seating_capacity, colour, status, gps_device_id, sim_number, 
+            gps_install_date, assigned_driver, ownership_type, owner_name, 
+            owner_contact, insurance_provider, insurance_policy_no, insurance_expiry, 
+            permit_type, permit_number, permit_issue, permit_expiry, fitness_cert_no, 
+            fitness_expiry, pollution_cert_no, pollution_expiry, last_service, 
+            next_service, km_driven, fire_extinguisher, first_aid_kit, cctv, 
+            panic_button, rc_book_doc, insurance_doc, fitness_doc, pollution_doc
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 
+            $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, 
+            $32, $33, $34, $35, $36, $37, $38, $39
+          ) RETURNING *
+        `, [
+          token.org_id, fields.vehicle_number, fields.model, fields.manufacturer, 
+          fields.vehicle_type, fields.year ? parseInt(fields.year) : null, fields.fuel_type, 
+          fields.seating_capacity ? parseInt(fields.seating_capacity) : null, fields.colour, 
+          fields.status || 'Active', fields.gps_device_id, fields.sim_number, fields.gps_install_date || null, 
+          fields.assigned_driver, fields.ownership_type, fields.owner_name, fields.owner_contact, 
+          fields.insurance_provider, fields.insurance_policy_no, fields.insurance_expiry || null, 
+          fields.permit_type, fields.permit_number, fields.permit_issue || null, fields.permit_expiry || null, 
+          fields.fitness_cert_no, fields.fitness_expiry || null, fields.pollution_cert_no, 
+          fields.pollution_expiry || null, fields.last_service || null, fields.next_service || null, 
+          fields.km_driven ? parseInt(fields.km_driven) : null, 
+          fields.fire_extinguisher === 'true', fields.first_aid_kit === 'true', 
+          fields.cctv === 'true', fields.panic_button === 'true', 
+          docUploads.rc_book_doc, docUploads.insurance_doc, docUploads.fitness_doc, docUploads.pollution_doc
+        ]);
+
+        return ok(result.rows[0]);
+      }
+
+      return err(405, "Method not allowed");
+    } catch (e: any) {
+      ctx.error(e);
+      if (e.status) return err(e.status, e.message);
+      if (e.code === "23505") return err(409, "Vehicle already exists");
+      return err(500, "Internal server error");
+    } finally {
+      client?.release();
+    }
+  }
+});

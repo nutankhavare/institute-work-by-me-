@@ -1,0 +1,1 @@
+﻿\"import pool from './src/lib/db';\\n\\nasync function run() {\\n  const table = 'institute_roles';\\n  const schema = 'schema1';\\n  try {\\n    const res = await pool.query(`\\n      SELECT column_name, data_type \\n      FROM information_schema.columns \\n      W\n<truncated 393 bytes>
