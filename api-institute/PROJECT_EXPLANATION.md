@@ -89,3 +89,4 @@ This is where the actual business logic lives. We organized this folder strictly
 2. **Zero Trust Security:** Every query relies on `token.org_id`. A user physically cannot query another organization's data by tampering with API parameters because the `org_id` is extracted securely from the cryptographically signed JWT.
 3. **No SQL Injection:** All database inputs use parameterized queries (`$1, $2, etc.`). We never use string interpolation for user input.
 4. **Cloud Native:** By shifting file uploads directly to Azure Blob Storage, the backend compute layer remains stateless, meaning Azure can scale it horizontally from 1 server to 100 servers under heavy load instantly without losing uploaded files.
+z

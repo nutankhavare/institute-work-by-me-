@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc -w",
-    "prestart": "powershell -NoProfile -Command \".\\node_modules\\.bin\\tsc; if ($?) { Copy-Item host.json dist/host.json -Force; Copy-Item dist-package.json dist/package.json -Force }\"",
+    "prestart": "tsc && cp host.json dist/host.json",
     "start": "func start --script-root dist",
     "type-check": "tsc --noEmit"
   },

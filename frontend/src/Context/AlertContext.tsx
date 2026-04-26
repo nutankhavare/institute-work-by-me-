@@ -6,7 +6,7 @@ import {
 } from "react";
 import AlertMessage from "../Components/UI/AlertMessage";
 
-type AlertType = "success" | "error" | "info";
+type AlertType = "success" | "error" | "info" | "warning" | "message";
 
 interface AlertState {
   message: string;

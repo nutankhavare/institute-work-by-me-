@@ -12,7 +12,8 @@ export interface EmailResponse {
 export async function sendEmail(
   to: string,
   subject: string,
-  html: string
+  html: string,
+  senderName?: string
 ): Promise<EmailResponse> {
   try {
     // 1. Create a transporter using environment variables
@@ -26,9 +27,11 @@ export async function sendEmail(
       },
     });
 
+    const displayName = senderName || process.env.SMTP_SENDER_NAME || "Institute Admin";
+
     // 2. Send the mail
     const info = await transporter.sendMail({
-      from: `"${process.env.SMTP_SENDER_NAME || "Institute Admin"}" <${process.env.SMTP_USER}>`,
+      from: `"${displayName}" <${process.env.SMTP_USER}>`,
       to,
       subject,
       html,
