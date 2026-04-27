@@ -27,16 +27,16 @@ app.http("broadcastsIndex", {
         const offset = (page - 1) * perPage;
 
         const countResult = await client.query(`
-          SELECT COUNT(*) FROM schema1.institute_broadcasts WHERE org_id = $1
-        `, [token.org_id]);
+          SELECT COUNT(*) FROM schema1.institute_broadcasts WHERE org_id::text = $1::text
+        `, [String(token.org_id)]);
         const total = parseInt(countResult.rows[0].count, 10);
 
         const result = await client.query(`
           SELECT * FROM schema1.institute_broadcasts 
-          WHERE org_id = $1 
+          WHERE org_id::text = $1::text 
           ORDER BY created_at DESC 
           LIMIT $2 OFFSET $3
-        `, [token.org_id, perPage, offset]);
+        `, [String(token.org_id), perPage, offset]);
 
         return ok({
           data: result.rows,
@@ -60,8 +60,8 @@ app.http("broadcastsIndex", {
 
         // 0. Fetch Organization Name for Dynamic Sender
         const orgResult = await client.query(
-          `SELECT name FROM schema1.institute_organizations WHERE org_id = $1`,
-          [token.org_id]
+          `SELECT name FROM schema1.institute_organizations WHERE org_id::text = $1::text`,
+          [String(token.org_id)]
         );
         const senderName = orgResult.rows[0]?.name || "Institute Admin";
 
@@ -76,8 +76,8 @@ app.http("broadcastsIndex", {
             
             const res = await client.query(`
               SELECT id, first_name, last_name, email, ${phoneCol} FROM ${table} 
-              WHERE id = $1 AND org_id = $2 AND status = 'Active' AND email IS NOT NULL
-            `, [item.id, token.org_id]);
+              WHERE id = $1 AND org_id::text = $2::text AND status = 'Active' AND email IS NOT NULL
+            `, [item.id, String(token.org_id)]);
             
             if (res.rows.length > 0) {
               recipients.push({ ...res.rows[0], type: item.type === 'staff' ? 'employee' : 'driver' });
@@ -87,16 +87,16 @@ app.http("broadcastsIndex", {
           if (target_audience === "staff" || target_audience === "everyone") {
             const staff = await client.query(`
               SELECT id, first_name, last_name, email, phone FROM schema1.institute_employees 
-              WHERE org_id = $1 AND status = 'Active' AND email IS NOT NULL
-            `, [token.org_id]);
+              WHERE org_id::text = $1::text AND status = 'Active' AND email IS NOT NULL
+            `, [String(token.org_id)]);
             recipients.push(...staff.rows.map(r => ({ ...r, type: 'employee' })));
           }
 
           if (target_audience === "drivers" || target_audience === "everyone") {
             const drivers = await client.query(`
               SELECT id, first_name, last_name, email, mobile_number as phone FROM schema1.institute_drivers 
-              WHERE org_id = $1 AND status = 'Active' AND email IS NOT NULL
-            `, [token.org_id]);
+              WHERE org_id::text = $1::text AND status = 'Active' AND email IS NOT NULL
+            `, [String(token.org_id)]);
             recipients.push(...drivers.rows.map(r => ({ ...r, type: 'driver' })));
           }
         }
@@ -110,9 +110,9 @@ app.http("broadcastsIndex", {
         const broadcastResult = await client.query(`
           INSERT INTO schema1.institute_broadcasts (
             org_id, target_audience, channel, subject, body, status, scheduled_at, total_recipients
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          ) VALUES ($1::integer, $2, $3, $4, $5, $6, $7, $8)
           RETURNING *
-        `, [token.org_id, target_audience, channel, subject, messageBody, status, scheduled_at || null, recipients.length]);
+        `, [parseInt(String(token.org_id)), target_audience, channel, subject, messageBody, status, scheduled_at || null, recipients.length]);
 
         const broadcast = broadcastResult.rows[0];
 

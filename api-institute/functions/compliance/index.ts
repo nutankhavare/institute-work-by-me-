@@ -31,28 +31,25 @@ app.http("complianceIndex", {
 
         const countResult = await client.query(`
           SELECT COUNT(*) FROM schema1.institute_compliance c
-          WHERE c.org_id = $1
+          WHERE c.org_id = $1::text
             AND ($2::text IS NULL OR c.status = $2)
-            AND ($3::text IS NULL OR c.entity_type = $3)
-            AND ($4::text IS NULL OR c.document_type ILIKE '%' || $4 || '%')
-        `, [token.org_id, status, category, search]);
+            AND ($3::text IS NULL OR c.category = $3)
+            AND ($4::text IS NULL OR c.document_name ILIKE '%' || $4 || '%')
+        `, [String(token.org_id), status, category, search]);
         const total = parseInt(countResult.rows[0].count, 10);
 
         const result = await client.query(`
           SELECT c.*,
-            CASE c.entity_type
-              WHEN 'vehicle' THEN (SELECT vehicle_number FROM schema1.institute_vehicles WHERE id = c.entity_id)
-              WHEN 'driver' THEN (SELECT first_name || ' ' || last_name FROM schema1.institute_drivers WHERE id = c.entity_id)
-            END as entity_name,
-            (c.expiry_date - CURRENT_DATE) as days_until_expiry
+            c.document_name as document_type,
+            c.registration_number as document_number
           FROM schema1.institute_compliance c
-          WHERE c.org_id = $1
+          WHERE c.org_id = $1::text
             AND ($2::text IS NULL OR c.status = $2)
-            AND ($3::text IS NULL OR c.entity_type = $3)
-            AND ($4::text IS NULL OR c.document_type ILIKE '%' || $4 || '%')
-          ORDER BY c.expiry_date ASC
+            AND ($3::text IS NULL OR c.category = $3)
+            AND ($4::text IS NULL OR c.document_name ILIKE '%' || $4 || '%')
+          ORDER BY c.created_at DESC
           LIMIT $5 OFFSET $6
-        `, [token.org_id, status, category, search, perPage, offset]);
+        `, [String(token.org_id), status, category, search, perPage, offset]);
 
         return ok({
           data: result.rows,
@@ -80,22 +77,20 @@ app.http("complianceIndex", {
 
         const result = await client.query(`
           INSERT INTO schema1.institute_compliance (
-            org_id, entity_type, entity_id, document_type, document_number, 
-            issue_date, expiry_date, status, document_url, remarks
+            org_id, document_name, registration_number, category, 
+            status, document_url, remarks, applies_to
           ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+            $1, $2, $3, $4, $5, $6, $7, $8::jsonb
           ) RETURNING *
         `, [
-          token.org_id, 
-          fields.entity_type, 
-          fields.entity_id ? parseInt(fields.entity_id) : null, 
+          String(token.org_id), 
           fields.document_type, 
           fields.document_number, 
-          fields.issue_date || null, 
-          fields.expiry_date || null, 
+          fields.entity_type, 
           fields.status || 'Valid', 
           documentUrl, 
-          fields.remarks
+          fields.remarks,
+          JSON.stringify({ type: fields.entity_type, id: fields.entity_id })
         ]);
 
         return ok(result.rows[0]);

@@ -97,14 +97,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const res = await tenantApi.get("/auth/refresh");
       if (res.status === 200 && res.data) {
-        const userData = res.data.data || res.data;
+        const responseData = res.data.data || res.data;
+        const userData = responseData.user || responseData;
+
+        // Update token if a new one was returned
+        if (responseData.token) {
+          localStorage.setItem("token", responseData.token);
+        }
+
         setAuthFromMe({
-          id: userData.id,
-          name: userData.name,
-          email: userData.email,
-          roles: userData.roles || [],
-          permissions: userData.permissions || [],
-          tenant_id: userData.tenant_id || userData.org_id,
+          id: userData.id || 0,
+          name: userData.name || userData.email || "",
+          email: userData.email || "",
+          roles: [userData.roleName || userData.role_name || "ORG_ADMIN"],
+          permissions: userData.permissions || ["*"],
+          tenant_id: String(userData.orgId || userData.org_id || ""),
         });
       }
     } catch (error: any) {

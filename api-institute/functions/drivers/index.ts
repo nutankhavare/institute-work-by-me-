@@ -44,12 +44,12 @@ app.http("driversIndex", {
 
         const result = await client.query(`
           SELECT d.*,
-            li.dl_number, li.dl_expiry_date, li.license_type,
+            li.number as dl_number, li.exp_date as dl_expiry_date, li.type as license_type,
             v.vehicle_number as assigned_vehicle_number
           FROM schema1.institute_drivers d
           LEFT JOIN schema1.institute_driver_license_insurance li ON li.driver_id = d.id
-          LEFT JOIN schema1.institute_vehicles v ON v.id = d.assigned_vehicle_id
-          WHERE d.org_id = $1
+          LEFT JOIN schema1.institute_vehicles v ON v.id = CASE WHEN d.vehicle ~ '^[0-9]+$' THEN d.vehicle::integer ELSE NULL END
+          WHERE d.org_id = $1::text
             AND ($2::text IS NULL OR d.status = $2)
             AND ($3::text IS NULL OR (
               d.first_name ILIKE '%' || $3 || '%' OR
@@ -60,7 +60,7 @@ app.http("driversIndex", {
             ))
           ORDER BY d.created_at DESC
           LIMIT $4 OFFSET $5
-        `, [token.org_id, status, search, perPage, offset]);
+        `, [String(token.org_id), status, search, perPage, offset]);
 
         return ok({
           data: result.rows,
@@ -91,37 +91,34 @@ app.http("driversIndex", {
         try {
           const driverResult = await client.query(`
             INSERT INTO schema1.institute_drivers (
-              org_id, first_name, last_name, gender, dob, email, mobile_number, 
-              blood_group, marital_status, profile_photo_url, employment_type, 
-              employee_id, address, city, district, state, pin_code, 
-              assigned_vehicle_id, beacon_id, operational_base, status, remarks
+              org_id, first_name, last_name, gender, date_of_birth, email, mobile_number, 
+              blood_group, marital_status, profile_photo, employment_type, 
+              employee_id, address_line_1, city, district, state, pin_code, 
+              vehicle, beacon_id, status, remarks
             ) VALUES (
               $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 
-              $17, $18, $19, $20, $21, $22
+              $17, $18, $19, $20, $21
             ) RETURNING *
           `, [
-            token.org_id, fields.first_name, fields.last_name, fields.gender, 
+            String(token.org_id), fields.first_name, fields.last_name, fields.gender, 
             fields.dob || null, fields.email, fields.mobile_number, fields.blood_group, 
             fields.marital_status, profilePhotoUrl, fields.employment_type, 
             fields.employee_id, fields.address, fields.city, fields.district, 
-            fields.state, fields.pin_code, fields.assigned_vehicle_id ? parseInt(fields.assigned_vehicle_id) : null, 
-            fields.beacon_id, fields.operational_base, fields.status || 'Active', fields.remarks
+            fields.state, fields.pin_code, fields.assigned_vehicle_id, 
+            fields.beacon_id, fields.status || 'Active', fields.remarks
           ]);
 
           const driverId = driverResult.rows[0].id;
 
           await client.query(`
             INSERT INTO schema1.institute_driver_license_insurance (
-              driver_id, dl_number, dl_issue_date, dl_expiry_date, license_type, 
-              driving_experience, insurance_policy_no, insurance_expiry
+              driver_id, number, issue_date, exp_date, type
             ) VALUES (
-              $1, $2, $3, $4, $5, $6, $7, $8
+              $1, $2, $3, $4, $5
             )
           `, [
             driverId, fields.dl_number, fields.dl_issue_date || null, 
-            fields.dl_expiry_date || null, fields.license_type, 
-            fields.driving_experience ? parseInt(fields.driving_experience) : null, 
-            fields.insurance_policy_no, fields.insurance_expiry || null
+            fields.dl_expiry_date || null, fields.license_type
           ]);
 
           await client.query('COMMIT');

@@ -414,7 +414,7 @@ export const SettingsPage = () => {
                  </div>
                  <div className="flex-1">
                     <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Org ID</div>
-                    <div className="text-sm font-bold text-slate-700">{org?.id}</div>
+                    <div className="text-sm font-bold text-slate-700">{org?.org_id}</div>
                  </div>
               </div>
             </div>

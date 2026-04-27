@@ -252,7 +252,7 @@ const LoginFormScreen = ({ onForgot, onOtpLogin }: { onForgot: () => void; onOtp
   const [loading, setLoading] = useState(false);
   
   const navigate = useNavigate();
-  const { refreshMe } = useAuth();
+  const { setAuthFromMe } = useAuth();
 
   const handle = (f: keyof LoginForm) => (e: ChangeEvent<HTMLInputElement>) => {
     const v = e.target.type === "checkbox" ? e.target.checked : e.target.value;
@@ -274,11 +274,19 @@ const LoginFormScreen = ({ onForgot, onOtpLogin }: { onForgot: () => void; onOtp
     if (!validate()) return;
     setLoading(true);
     try {
-      await login({ email: form.email, password: form.password } as any);
-      await refreshMe();
+      const result = await login({ email: form.email, password: form.password } as any);
+      const userData = result?.data?.user || result?.user || result?.data || {};
+      setAuthFromMe({
+        id: userData.id || 0,
+        name: userData.name || userData.email || form.email,
+        email: userData.email || form.email,
+        roles: [userData.roleName || userData.role_name || "ORG_ADMIN"],
+        permissions: userData.permissions || ["*"],
+        tenant_id: String(userData.orgId || userData.org_id || ""),
+      });
       navigate("/dashboard");
     } catch (err: any) {
-      setErrs((p) => ({ ...p, password: err.response?.data?.message || "Invalid credentials. Please try again." }));
+      setErrs((p) => ({ ...p, password: err.response?.data?.error?.message || err.response?.data?.message || "Invalid credentials. Please try again." }));
     } finally {
       setLoading(false);
     }

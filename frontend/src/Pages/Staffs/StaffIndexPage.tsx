@@ -219,7 +219,8 @@ const StaffIndexPage = () => {
       try {
         const response = await tenantApi.get("/roles");
         if (response.data.success) {
-          setAllRoles(response.data.data || []);
+          const rolesData = response.data.data;
+          setAllRoles(Array.isArray(rolesData) ? rolesData : (rolesData?.data || []));
         }
       } catch (err) {
         console.error("Error fetching roles:", err);

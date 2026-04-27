@@ -66,7 +66,8 @@ const StaffCreatePage = () => {
           tenantApi.get("/roles"),
           axios.get(`${centralUrl}/masters/forms/dropdowns/states`)
         ]);
-        setAllRoles(rolesRes.data.data || []);
+        const rolesRaw = rolesRes.data.data;
+        setAllRoles(Array.isArray(rolesRaw) ? rolesRaw : (rolesRaw?.data || []));
         setStates(statesRes.data || []);
       } catch (err) {
         showAlert("Failed to load form data.", "error");

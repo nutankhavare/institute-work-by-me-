@@ -213,7 +213,8 @@ export const IndexPage = () => {
         setLoading(true);
         try {
             const response = await tenantApi.get("/roles");
-            const data = response.data.data || [];
+            const responseData = response.data.data;
+            const data = Array.isArray(responseData) ? responseData : (responseData?.data || []);
             
             const mappedRoles = data.map((r: any) => ({
                 id: r.id,

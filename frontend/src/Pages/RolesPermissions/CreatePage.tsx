@@ -92,7 +92,8 @@ const CreatePage = () => {
             try {
                 setLoading(true);
                 const permsRes = await tenantApi.get("/permissions");
-                setAllPermissions(permsRes.data.data || []);
+                const permsRaw = permsRes.data.data;
+                setAllPermissions(Array.isArray(permsRaw) ? permsRaw : (permsRaw?.data || []));
 
                 if (isEdit && id) {
                     const roleRes = await tenantApi.get(`/roles/${id}`);

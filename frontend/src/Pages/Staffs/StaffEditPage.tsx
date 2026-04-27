@@ -61,7 +61,8 @@ const StaffEditPage = () => {
           tenantApi.get(`/employees/${id}`)
         ]);
 
-        setAllRoles(rolesRes.data.data || []);
+        const rolesRaw = rolesRes.data.data;
+        setAllRoles(Array.isArray(rolesRaw) ? rolesRaw : (rolesRaw?.data || []));
         setStates(statesRes.data || []);
 
         const emp = employeeRes.data.data;

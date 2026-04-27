@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import { EmailClient } from "@azure/communication-email";
 
 export interface EmailResponse {
   success: boolean;
@@ -7,7 +7,7 @@ export interface EmailResponse {
 }
 
 /**
- * Sends an email using Nodemailer via Gmail SMTP (or any SMTP provider)
+ * Sends an email using Azure Communication Services
  */
 export async function sendEmail(
   to: string,
@@ -16,30 +16,39 @@ export async function sendEmail(
   senderName?: string
 ): Promise<EmailResponse> {
   try {
-    // 1. Create a transporter using environment variables
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || "smtp.gmail.com",
-      port: parseInt(process.env.SMTP_PORT || "587"),
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: process.env.SMTP_USER, // e.g. your-institute@gmail.com
-        pass: process.env.SMTP_PASS, // your 16-digit App Password
+    const connectionString = process.env.COMMUNICATION_SERVICES_CONNECTION_STRING;
+    const senderAddress = process.env.SENDER_EMAIL_ADDRESS; // e.g., DoNotReply@xxxx-xxxx.azurecomm.net
+
+    if (!connectionString || !senderAddress) {
+      console.warn("Azure Communication Services is not fully configured (missing env vars).");
+      return { success: false, error: "Email service not configured." };
+    }
+
+    const client = new EmailClient(connectionString);
+    const displayName = senderName || "Institute Admin";
+
+    const emailMessage = {
+      senderAddress: senderAddress,
+      content: {
+        subject: subject,
+        html: html,
       },
-    });
+      recipients: {
+        to: [{ address: to, displayName: to }],
+      },
+      // You could theoretically set replyTo to a different address
+    };
 
-    const displayName = senderName || process.env.SMTP_SENDER_NAME || "Institute Admin";
+    const poller = await client.beginSend(emailMessage);
+    const result = await poller.pollUntilDone();
 
-    // 2. Send the mail
-    const info = await transporter.sendMail({
-      from: `"${displayName}" <${process.env.SMTP_USER}>`,
-      to,
-      subject,
-      html,
-    });
-
-    return { success: true, messageId: info.messageId };
+    if (result.status === "Succeeded") {
+      return { success: true, messageId: result.id };
+    } else {
+      return { success: false, error: result.error?.message || "Send failed" };
+    }
   } catch (error: any) {
-    console.error("Nodemailer Error:", error);
+    console.error("Azure Email Error:", error);
     return { success: false, error: error.message };
   }
 }

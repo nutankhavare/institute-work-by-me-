@@ -16,6 +16,9 @@ app.http("broadcastsById", {
       const token = auth.user;
       const broadcastId = req.params.id;
 
+      // Guard: reject non-numeric IDs (prevents route conflict with /broadcasts/stats)
+      if (!/^\d+$/.test(broadcastId)) return err(404, "Broadcast not found");
+
       client = await getPool().connect();
       await withTenant(client, token.org_id);
 

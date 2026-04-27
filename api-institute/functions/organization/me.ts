@@ -21,12 +21,31 @@ app.http("organizationMe", {
       await withTenant(client, token.org_id);
 
       if (req.method === "GET") {
-        const result = await client.query(
-          `SELECT * FROM schema1.institute_organizations WHERE org_id = $1`,
+        // Read base org from public.organizations (created by super admin)
+        const baseResult = await client.query(
+          `SELECT id as org_id, name, type, email, phone, website,
+                  registration_type, registration_no, registration_date,
+                  gst_number, pan_number, tan_number, udyam_no,
+                  subscription_plan, status, remarks, created_at
+           FROM public.organizations WHERE id = $1`,
           [token.org_id]
         );
-        if (result.rows.length === 0) return err(404, "Organization profile not configured");
-        return ok(result.rows[0]);
+
+        // Read extended profile from schema1 (if institute admin has saved settings)
+        let extended: any = {};
+        try {
+          const extResult = await client.query(
+            `SELECT logo_url, address, contact, institute, documents, updated_at
+             FROM schema1.institute_organizations WHERE org_id::text = $1::text`,
+            [String(token.org_id)]
+          );
+          if (extResult.rows.length > 0) extended = extResult.rows[0];
+        } catch { /* table may not exist or be empty */ }
+
+        if (baseResult.rows.length === 0) return err(404, "Organization profile not configured");
+
+        // Merge base + extended
+        return ok({ ...baseResult.rows[0], ...extended });
       }
 
       if (req.method === "PUT") {

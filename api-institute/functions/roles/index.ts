@@ -33,17 +33,17 @@ app.http("rolesIndex", {
         const result = await client.query(`
           SELECT r.*, 
             COALESCE(
-              json_agg(json_build_object('id', p.id, 'name', p.action)) 
+              json_agg(json_build_object('id', p.id, 'name', p.name)) 
               FILTER (WHERE p.id IS NOT NULL), '[]'::json
             ) as permission_objects 
           FROM schema1.institute_roles r 
           LEFT JOIN schema1.institute_permissions p 
             ON p.id::text = ANY(SELECT jsonb_array_elements_text(r.permissions)) 
-          WHERE r.org_id = $1 
+          WHERE r.org_id = $1::text
           GROUP BY r.id
           ORDER BY r.created_at DESC
           LIMIT $2 OFFSET $3
-        `, [token.org_id, perPage, offset]);
+        `, [String(token.org_id), perPage, offset]);
 
         return ok({
           data: result.rows,

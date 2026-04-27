@@ -8,4 +8,14 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://func-institue-api-ddh5hrcfajbtddfk.southindia-01.azurewebsites.net',
+        changeOrigin: true,
+        secure: true,
+      }
+    }
+  }
 })
+

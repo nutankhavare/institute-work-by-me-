@@ -30,20 +30,20 @@ app.http("vehiclesIndex", {
 
         const countResult = await client.query(`
           SELECT COUNT(*) FROM schema1.institute_vehicles
-          WHERE org_id = $1
+          WHERE org_id = $1::text
             AND ($2::text IS NULL OR status = $2)
             AND ($3::text IS NULL OR (
               vehicle_number ILIKE '%' || $3 || '%' OR
               model ILIKE '%' || $3 || '%' OR
               manufacturer ILIKE '%' || $3 || '%'
             ))
-        `, [token.org_id, status, search]);
+        `, [String(token.org_id), status, search]);
         const total = parseInt(countResult.rows[0].count, 10);
 
         const result = await client.query(`
           SELECT *
           FROM schema1.institute_vehicles
-          WHERE org_id = $1
+          WHERE org_id = $1::text
             AND ($2::text IS NULL OR status = $2)
             AND ($3::text IS NULL OR (
               vehicle_number ILIKE '%' || $3 || '%' OR
@@ -52,7 +52,7 @@ app.http("vehiclesIndex", {
             ))
           ORDER BY created_at DESC
           LIMIT $4 OFFSET $5
-        `, [token.org_id, status, search, perPage, offset]);
+        `, [String(token.org_id), status, search, perPage, offset]);
 
         return ok({
           data: result.rows,
@@ -83,22 +83,22 @@ app.http("vehiclesIndex", {
 
         const result = await client.query(`
           INSERT INTO schema1.institute_vehicles (
-            org_id, vehicle_number, model, manufacturer, vehicle_type, year, 
-            fuel_type, seating_capacity, colour, status, gps_device_id, sim_number, 
-            gps_install_date, assigned_driver, ownership_type, owner_name, 
-            owner_contact, insurance_provider, insurance_policy_no, insurance_expiry, 
-            permit_type, permit_number, permit_issue, permit_expiry, fitness_cert_no, 
-            fitness_expiry, pollution_cert_no, pollution_expiry, last_service, 
-            next_service, km_driven, fire_extinguisher, first_aid_kit, cctv, 
-            panic_button, rc_book_doc, insurance_doc, fitness_doc, pollution_doc
+            org_id, vehicle_number, model, manufacturer, vehicle_type, manufacturing_year, 
+            fuel_type, seating_capacity, vehicle_color, status, gps_device_id, gps_sim_number, 
+            gps_installation_date, assigned_driver_id, ownership_type, owner_name, 
+            owner_contact_number, insurance_provider_name, insurance_policy_number, insurance_expiry_date, 
+            permit_type, permit_number, permit_issue_date, permit_expiry_date, fitness_certificate_number, 
+            fitness_expiry_date, pollution_certificate_number, pollution_expiry_date, last_service_date, 
+            next_service_due_date, kilometers_driven, fire_extinguisher, first_aid_kit, cctv_installed, 
+            panic_button_installed, rc_book_doc, insurance_doc, fitness_certificate, puc_doc
           ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 
             $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, 
             $32, $33, $34, $35, $36, $37, $38, $39
           ) RETURNING *
         `, [
-          token.org_id, fields.vehicle_number, fields.model, fields.manufacturer, 
-          fields.vehicle_type, fields.year ? parseInt(fields.year) : null, fields.fuel_type, 
+          String(token.org_id), fields.vehicle_number, fields.model, fields.manufacturer, 
+          fields.vehicle_type, fields.year || null, fields.fuel_type, 
           fields.seating_capacity ? parseInt(fields.seating_capacity) : null, fields.colour, 
           fields.status || 'Active', fields.gps_device_id, fields.sim_number, fields.gps_install_date || null, 
           fields.assigned_driver, fields.ownership_type, fields.owner_name, fields.owner_contact, 
@@ -107,8 +107,8 @@ app.http("vehiclesIndex", {
           fields.fitness_cert_no, fields.fitness_expiry || null, fields.pollution_cert_no, 
           fields.pollution_expiry || null, fields.last_service || null, fields.next_service || null, 
           fields.km_driven ? parseInt(fields.km_driven) : null, 
-          fields.fire_extinguisher === 'true', fields.first_aid_kit === 'true', 
-          fields.cctv === 'true', fields.panic_button === 'true', 
+          fields.fire_extinguisher || 'No', fields.first_aid_kit || 'No', 
+          fields.cctv || 'No', fields.panic_button || 'No', 
           docUploads.rc_book_doc, docUploads.insurance_doc, docUploads.fitness_doc, docUploads.pollution_doc
         ]);
 
