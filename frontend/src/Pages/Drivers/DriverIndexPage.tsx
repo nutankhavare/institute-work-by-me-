@@ -47,6 +47,7 @@ import { DUMMY_USER_IMAGE } from "../../Utils/Toolkit";
 import type { Driver } from "./Driver.types";
 import type { PaginatedResponse } from "../../Types/Index";
 import { useAlert } from "../../Context/AlertContext";
+import { useConfirm } from "../../Context/ConfirmContext";
 import ExportOverlay from "../../Components/UI/ExportOverlay";
 
 /* ── STAT CARD COMPONENT ── */
@@ -90,6 +91,7 @@ const StatCard = ({
 const DriverIndexPage = () => {
   const navigate = useNavigate();
   const { showAlert } = useAlert();
+  const confirm = useConfirm();
 
   // Data State
   const [allDrivers, setAllDrivers] = useState<Driver[]>([]);
@@ -206,7 +208,7 @@ const DriverIndexPage = () => {
   };
 
   const handleDelete = async (driver: Driver) => {
-    if (!confirm(`Are you sure you want to PERMANENTLY DELETE driver ${driver.first_name} ${driver.last_name}? This action cannot be undone.`))
+    if (!(await confirm(`Are you sure you want to PERMANENTLY DELETE driver ${driver.first_name} ${driver.last_name}? This action cannot be undone.`)))
       return;
     try {
       const response = await tenantApi.delete(`/drivers/${driver.id}`);
@@ -483,6 +485,9 @@ const DriverIndexPage = () => {
                       Experience
                     </Th>
                     <Th className="text-[11px] font-[900] uppercase tracking-[0.08em] !text-[#64748b] py-[18px] text-center">
+                      Beacon
+                    </Th>
+                    <Th className="text-[11px] font-[900] uppercase tracking-[0.08em] !text-[#64748b] py-[18px] text-center">
                       Status
                     </Th>
                     <Th className="text-[11px] font-[900] uppercase tracking-[0.08em] !text-[#64748b] py-[18px] text-center pr-8">
@@ -570,6 +575,15 @@ const DriverIndexPage = () => {
                             <span className="text-[#cbd5e1] font-[700]">—</span>
                           )}
                         </Td>
+                        <Td className="py-5 text-center">
+                          {row.beacon_id ? (
+                            <span className="inline-flex items-center px-2.5 py-1 bg-[#f5f3ff] text-[#7c3aed] text-[11px] font-[800] rounded-md border border-[#ddd6fe] uppercase">
+                              {row.beacon_id}
+                            </span>
+                          ) : (
+                            <span className="text-[#94a3b8] text-[12px]">None</span>
+                          )}
+                        </Td>
 
                         {/* Status */}
                         <Td className="py-5 text-center">
@@ -595,8 +609,8 @@ const DriverIndexPage = () => {
                               <Eye size={16} />
                             </Link>
                             <button
-                              onClick={() => {
-                                if(confirm("Modify this driver record?")) {
+                              onClick={async () => {
+                                if(await confirm("Modify this driver record?")) {
                                   navigate(`/drivers/edit/${row.id}`);
                                 }
                               }}

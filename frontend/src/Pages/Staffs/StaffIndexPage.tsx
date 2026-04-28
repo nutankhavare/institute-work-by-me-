@@ -47,6 +47,7 @@ import { Pagination } from "../../Components/Table/Pagination";
 import type { Employee, Role } from "./Staff.types";
 import { DUMMY_USER_IMAGE } from "../../Utils/Toolkit";
 import ExportOverlay from "../../Components/UI/ExportOverlay";
+import { useConfirm } from "../../Context/ConfirmContext";
 
 /* ── STAT CARD COMPONENT ── */
 const StatCard = ({ title, value, subtext, icon: Icon, colorClass, delay = 0 }: any) => (
@@ -149,6 +150,7 @@ const ImportModal = ({ isOpen, onClose, onImport }: { isOpen: boolean; onClose: 
 const StaffIndexPage = () => {
   const { showAlert } = useAlert();
   const navigate = useNavigate();
+  const confirm = useConfirm();
 
   // Data State
   const [staffList, setStaffList] = useState<Employee[]>([]);
@@ -238,7 +240,7 @@ const StaffIndexPage = () => {
   };
 
   const handleDelete = async (emp: Employee) => {
-    if (!confirm(`Delete ${emp.first_name} ${emp.last_name}? This cannot be undone.`)) return;
+    if (!(await confirm(`Delete ${emp.first_name} ${emp.last_name}? This cannot be undone.`))) return;
     try {
       await tenantApi.delete(`/employees/${emp.id}`);
       setStaffList((prev) => prev.filter((s) => s.id !== emp.id));
@@ -509,6 +511,7 @@ const StaffIndexPage = () => {
                     <Th className="text-[11px] font-[900] uppercase tracking-[0.08em] !text-[#64748b] py-[18px]">Role</Th>
                     <Th className="text-[11px] font-[900] uppercase tracking-[0.08em] !text-[#64748b] py-[18px]">Contact Details</Th>
                     <Th className="text-[11px] font-[900] uppercase tracking-[0.08em] !text-[#64748b] py-[18px] text-center">Join Date</Th>
+                    <Th className="text-[11px] font-[900] uppercase tracking-[0.08em] !text-[#64748b] py-[18px] text-center">Beacon</Th>
                     <Th className="text-[11px] font-[900] uppercase tracking-[0.08em] !text-[#64748b] py-[18px] text-center">Status</Th>
                     <Th className="text-[11px] font-[900] uppercase tracking-[0.08em] !text-[#64748b] py-[18px] text-center pr-8">Actions</Th>
                   </Thead>
@@ -547,6 +550,15 @@ const StaffIndexPage = () => {
                           {row.joining_date ? new Date(row.joining_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
                         </Td>
                         <Td className="py-5 text-center">
+                          {row.beacon_id ? (
+                            <span className="inline-flex items-center px-2.5 py-1 bg-[#f5f3ff] text-[#7c3aed] text-[11px] font-[800] rounded-md border border-[#ddd6fe] uppercase">
+                              {row.beacon_id}
+                            </span>
+                          ) : (
+                            <span className="text-[#94a3b8] text-[12px]">None</span>
+                          )}
+                        </Td>
+                        <Td className="py-5 text-center">
                           <span className={`px-3 py-1.5 rounded-full text-[10.5px] font-[900] uppercase tracking-wider border shadow-xs ${
                             row.status?.toLowerCase() === 'active' ? 'bg-[#ecfdf5] text-[#059669] border-[#d1fae5]' :
                             ['leave', 'on leave', 'onleave'].includes(row.status?.toLowerCase() || "") ? 'bg-[#fffbeb] text-[#d97706] border-[#fef3c7]' :
@@ -561,8 +573,8 @@ const StaffIndexPage = () => {
                                <Eye size={17} />
                              </Link>
                              <button
-                               onClick={() => {
-                                 if(confirm("Modify this employee record?")) {
+                               onClick={async () => {
+                                 if(await confirm("Modify this employee record?")) {
                                    navigate(`/staff/edit/${row.id}`);
                                  }
                                }}

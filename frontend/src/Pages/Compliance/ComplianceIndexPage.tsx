@@ -21,10 +21,12 @@ import { useAlert } from "../../Context/AlertContext";
 import { Loader } from "../../Components/UI/Loader";
 import ExportOverlay from "../../Components/UI/ExportOverlay";
 import { Pagination } from "../../Components/Table/Pagination";
+import { useConfirm } from "../../Context/ConfirmContext";
 
 const ComplianceIndexPage = () => {
   const navigate = useNavigate();
   const { showAlert } = useAlert();
+  const confirm = useConfirm();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -158,7 +160,7 @@ const ComplianceIndexPage = () => {
   }, [fetchRecords]);
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this record?")) return;
+    if (!(await confirm("Are you sure you want to delete this record?"))) return;
     try {
       await tenantApi.delete(`/compliance/${id}`);
       showAlert("Record deleted successfully", "success");
@@ -344,8 +346,8 @@ const ComplianceIndexPage = () => {
                                      <FileText size={18} />
                                   </button>
                                   <button 
-                                    onClick={() => {
-                                      if(confirm("Modify this compliance record?")) {
+                                    onClick={async () => {
+                                      if(await confirm("Modify this compliance record?")) {
                                         navigate(`/compliance/edit/${r.id}`);
                                       }
                                     }}

@@ -34,9 +34,11 @@ import tenantApi, { centralAsset } from "../../Services/ApiService";
 import type { Traveller } from "./Traveler.types";
 import type { PaginatedResponse } from "../../Types/Index";
 import { Loader } from "../../Components/UI/Loader";
+import { useConfirm } from "../../Context/ConfirmContext";
 
 const TravellerIndexPage = () => {
   const navigate = useNavigate();
+  const confirm = useConfirm();
   // Data State
   const [allTravelers, setAllTravelers] = useState<Traveller[]>([]);
   const [displayTravelers, setDisplayTravelers] = useState<Traveller[]>([]);
@@ -310,8 +312,8 @@ const TravellerIndexPage = () => {
                               </Link>
 
                               <button
-                                onClick={() => {
-                                  if(confirm("Modify this traveller record?")) {
+                                onClick={async () => {
+                                  if(await confirm("Modify this traveller record?")) {
                                     navigate(`/travellers/edit/${row.id}`);
                                   }
                                 }}

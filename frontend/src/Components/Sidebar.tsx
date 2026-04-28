@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useToolkit } from "../Utils/Toolkit";
 import { logout } from "../Services/AuthService";
 import { useAuth } from "../Context/AuthContext";
+import { useConfirm } from "../Context/ConfirmContext";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Lucide Icons as per Design Spec
@@ -156,6 +157,7 @@ const Sidebar = ({ isOpen, closeSidebar }: Props) => {
   const location = useLocation();
   const { canAny, roles } = useToolkit();
   const { user } = useAuth();
+  const confirm = useConfirm();
   const navigate = useNavigate();
   const isAdmin = roles.some((role: any) => ["admin", "super admin", "org_admin", "org admin"].includes(role?.toLowerCase?.()));
 
@@ -167,8 +169,8 @@ const Sidebar = ({ isOpen, closeSidebar }: Props) => {
       return canAny(link.requiredPermissions);
     });
 
-  const handleLogout = () => {
-    if (window.confirm("Are you sure you want to logout? Any unsaved changes will be lost.")) {
+  const handleLogout = async () => {
+    if (await confirm("Are you sure you want to logout? Any unsaved changes will be lost.")) {
       logout();
       navigate("/login");
     }
