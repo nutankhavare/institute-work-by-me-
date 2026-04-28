@@ -8,7 +8,7 @@ import axios from "axios";
 // Components
 import LoadingSpinner from "../../Components/UI/LoadingSpinner";
 import PageHeader from "../../Components/UI/PageHeader";
-import tenantApi, { centralUrl } from "../../Services/ApiService";
+import tenantApi from "../../Services/ApiService";
 import { useAlert } from "../../Context/AlertContext";
 import InfoTooltip from "../../Components/UI/InfoTooltip";
 import type { Dependant, Employee, Role } from "./Staff.types";
@@ -64,11 +64,11 @@ const StaffCreatePage = () => {
         setLoading(true);
         const [rolesRes, statesRes] = await Promise.all([
           tenantApi.get("/roles"),
-          axios.get(`${centralUrl}/masters/forms/dropdowns/states`)
+          tenantApi.get(`/masters/forms/dropdowns/states`)
         ]);
         const rolesRaw = rolesRes.data.data;
         setAllRoles(Array.isArray(rolesRaw) ? rolesRaw : (rolesRaw?.data || []));
-        setStates(statesRes.data || []);
+        setStates(Array.isArray(statesRes.data) ? statesRes.data : statesRes.data?.data || []);
       } catch (err) {
         showAlert("Failed to load form data.", "error");
       } finally {
@@ -87,8 +87,11 @@ const StaffCreatePage = () => {
 
   useEffect(() => {
     if (!selectedState) { setDistricts([]); return; }
-    axios.get(`${centralUrl}/masters/forms/dropdowns/districts/${selectedState}`)
-      .then(res => setDistricts(res.data || []))
+    tenantApi.get(`/masters/forms/dropdowns/districts/${selectedState}`)
+      .then(res => {
+        const d = Array.isArray(res.data) ? res.data : res.data?.data || [];
+        setDistricts(d);
+      })
       .catch(() => {});
   }, [selectedState]);
 

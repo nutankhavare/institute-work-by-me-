@@ -9,7 +9,7 @@ import { useAlert } from "../../Context/AlertContext";
 import InfoTooltip from "../../Components/UI/InfoTooltip";
 import type { Employee, Role } from "./Staff.types";
 import type { StateDistrict } from "../../Types/Index";
-import tenantApi, { centralUrl, tenantAsset } from "../../Services/ApiService";
+import tenantApi, { tenantAsset } from "../../Services/ApiService";
 import axios from "axios";
 import { DUMMY_USER_IMAGE } from "../../Utils/Toolkit";
 
@@ -57,20 +57,21 @@ const StaffEditPage = () => {
         setLoading(true);
         const [rolesRes, statesRes, employeeRes] = await Promise.all([
           tenantApi.get("/roles"),
-          axios.get(`${centralUrl}/masters/forms/dropdowns/states`),
+          tenantApi.get(`/masters/forms/dropdowns/states`),
           tenantApi.get(`/employees/${id}`)
         ]);
 
         const rolesRaw = rolesRes.data.data;
         setAllRoles(Array.isArray(rolesRaw) ? rolesRaw : (rolesRaw?.data || []));
-        setStates(statesRes.data || []);
+        setStates(Array.isArray(statesRes.data) ? statesRes.data : statesRes.data?.data || []);
 
         const emp = employeeRes.data.data;
         if (emp.photo) setPhotoPreview(`${tenantAsset}${emp.photo}`);
 
         if (emp.state) {
-          const districtRes = await axios.get(`${centralUrl}/masters/forms/dropdowns/districts/${emp.state}`);
-          setDistricts(districtRes.data || []);
+          const districtRes = await tenantApi.get(`/masters/forms/dropdowns/districts/${emp.state}`);
+          const d = Array.isArray(districtRes.data) ? districtRes.data : districtRes.data?.data || [];
+          setDistricts(d);
         }
 
         let roleNames: string[] = [];
@@ -108,8 +109,11 @@ const StaffEditPage = () => {
 
   useEffect(() => {
     if (!selectedState || loading) return;
-    axios.get(`${centralUrl}/masters/forms/dropdowns/districts/${selectedState}`)
-      .then(res => setDistricts(res.data || []))
+    tenantApi.get(`/masters/forms/dropdowns/districts/${selectedState}`)
+      .then(res => {
+        const d = Array.isArray(res.data) ? res.data : res.data?.data || [];
+        setDistricts(d);
+      })
       .catch(() => {});
   }, [selectedState, loading]);
 

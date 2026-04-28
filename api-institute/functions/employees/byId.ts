@@ -23,11 +23,9 @@ app.http("employeesById", {
 
       if (req.method === "GET") {
         const result = await client.query(`
-          SELECT e.*, r.name as role_name
-          FROM schema1.institute_employees e
-          LEFT JOIN schema1.institute_roles r ON r.id = e.role_id
-          WHERE e.id = $1 AND e.org_id = $2
-        `, [employeeId, token.org_id]);
+          SELECT * FROM schema1.institute_employees
+          WHERE id = $1 AND org_id = $2::text
+        `, [employeeId, String(token.org_id)]);
 
         if (result.rows.length === 0) return err(404, "Employee not found");
         return ok(result.rows[0]);
@@ -36,57 +34,63 @@ app.http("employeesById", {
       if (req.method === "PUT") {
         const { fields, files } = await parseMultipart(req);
         
-        let profilePhotoUrl = undefined;
-        if (files.profilePhoto) {
-          profilePhotoUrl = await uploadToBlob(
-            files.profilePhoto.buffer, 
-            files.profilePhoto.filename, 
-            files.profilePhoto.mimetype, 
-            'employees'
-          );
+        let photoUrl: string | undefined = undefined;
+        if (files.photo) {
+          photoUrl = await uploadToBlob(files.photo.buffer, files.photo.filename, files.photo.mimetype, 'employees');
         }
+
+        // Parse roles
+        const rolesArr: string[] = [];
+        for (const [key, val] of Object.entries(fields)) {
+          if (key === 'roles[]' || key.startsWith('roles[')) {
+            rolesArr.push(String(val));
+          }
+        }
+        const rolesJson = rolesArr.length > 0 ? JSON.stringify(rolesArr) : (fields.roles ? fields.roles : null);
 
         const result = await client.query(`
           UPDATE schema1.institute_employees SET
             first_name = COALESCE($3, first_name),
             last_name = COALESCE($4, last_name),
             gender = COALESCE($5, gender),
-            email = COALESCE($6, email),
-            phone = COALESCE($7, phone),
-            designation = COALESCE($8, designation),
-            department = COALESCE($9, department),
+            marital_status = COALESCE($6, marital_status),
+            email = COALESCE($7, email),
+            phone = COALESCE($8, phone),
+            designation = COALESCE($9, designation),
             employment_type = COALESCE($10, employment_type),
             joining_date = COALESCE($11, joining_date),
-            dob = COALESCE($12, dob),
-            address = COALESCE($13, address),
-            address2 = COALESCE($14, address2),
+            date_of_birth = COALESCE($12, date_of_birth),
+            address_line_1 = COALESCE($13, address_line_1),
+            address_line_2 = COALESCE($14, address_line_2),
             landmark = COALESCE($15, landmark),
             state = COALESCE($16, state),
             district = COALESCE($17, district),
             city = COALESCE($18, city),
             pin_code = COALESCE($19, pin_code),
-            emergency_name = COALESCE($20, emergency_name),
-            emergency_phone = COALESCE($21, emergency_phone),
-            emergency_email = COALESCE($22, emergency_email),
+            primary_person_name = COALESCE($20, primary_person_name),
+            primary_person_phone_1 = COALESCE($21, primary_person_phone_1),
+            primary_person_email = COALESCE($22, primary_person_email),
             bank_name = COALESCE($23, bank_name),
-            account_holder = COALESCE($24, account_holder),
+            account_holder_name = COALESCE($24, account_holder_name),
             account_number = COALESCE($25, account_number),
-            ifsc = COALESCE($26, ifsc),
-            profile_photo_url = COALESCE($27, profile_photo_url),
-            role_id = COALESCE($28, role_id),
+            ifsc_code = COALESCE($26, ifsc_code),
+            photo = COALESCE($27, photo),
+            roles = COALESCE($28::jsonb, roles),
             status = COALESCE($29, status),
             remarks = COALESCE($30, remarks),
             updated_at = NOW()
-          WHERE id = $1 AND org_id = $2
+          WHERE id = $1 AND org_id = $2::text
           RETURNING *
         `, [
-          employeeId, token.org_id, fields.first_name, fields.last_name, fields.gender, 
-          fields.email, fields.phone, fields.designation, fields.department, fields.employment_type, 
-          fields.joining_date || null, fields.dob || null, fields.address, fields.address2, 
-          fields.landmark, fields.state, fields.district, fields.city, fields.pin_code, 
-          fields.emergency_name, fields.emergency_phone, fields.emergency_email, fields.bank_name, 
-          fields.account_holder, fields.account_number, fields.ifsc, profilePhotoUrl, 
-          fields.role_id ? parseInt(fields.role_id) : null, fields.status, fields.remarks
+          employeeId, String(token.org_id),
+          fields.first_name, fields.last_name, fields.gender, fields.marital_status,
+          fields.email, fields.phone, fields.designation, fields.employment_type,
+          fields.joining_date || null, fields.date_of_birth || null,
+          fields.address_line_1, fields.address_line_2, fields.landmark,
+          fields.state, fields.district, fields.city, fields.pin_code,
+          fields.primary_person_name, fields.primary_person_phone_1, fields.primary_person_email,
+          fields.bank_name, fields.account_holder_name, fields.account_number, fields.ifsc_code,
+          photoUrl, rolesJson, fields.status, fields.remarks
         ]);
 
         if (result.rows.length === 0) return err(404, "Employee not found");
@@ -95,10 +99,9 @@ app.http("employeesById", {
 
       if (req.method === "DELETE") {
         const result = await client.query(
-          `DELETE FROM schema1.institute_employees WHERE id = $1 AND org_id = $2`,
-          [employeeId, token.org_id]
+          `DELETE FROM schema1.institute_employees WHERE id = $1 AND org_id = $2::text`,
+          [employeeId, String(token.org_id)]
         );
-
         if (result.rowCount === 0) return err(404, "Employee not found");
         return ok({ deleted: true });
       }
@@ -106,9 +109,8 @@ app.http("employeesById", {
       return err(405, "Method not allowed");
     } catch (e: any) {
       ctx.error(e);
-      if (e.status) return err(e.status, e.message);
       if (e.code === "23505") return err(409, "Record already exists");
-      return err(500, "Internal server error");
+      return err(500, e.message || "Internal server error");
     } finally {
       client?.release();
     }

@@ -50,8 +50,9 @@ app.http("beaconDeviceDropdown", {
       await withTenant(client, token.org_id);
 
       const result = await client.query(`
-        SELECT id, device_id, serial_number FROM schema1.institute_devices
-        WHERE org_id = $1 AND device_type = 'BLE' AND status = 'Active'
+        SELECT id, device_id, sequence_id, battery_level, status, assigned_to
+        FROM schema1.institute_beacon
+        WHERE allocated_to_org = $1 AND is_active = true
         ORDER BY device_id ASC
       `, [token.org_id]);
 
@@ -81,8 +82,9 @@ app.http("gpsDeviceDropdown", {
       await withTenant(client, token.org_id);
 
       const result = await client.query(`
-        SELECT id, device_id, serial_number FROM schema1.institute_devices
-        WHERE org_id = $1 AND device_type = 'GPS' AND status = 'Active'
+        SELECT id, device_id, sim_number, status, assigned_to
+        FROM schema1.institute_gps
+        WHERE allocated_to_org = $1 AND is_active = true
         ORDER BY device_id ASC
       `, [token.org_id]);
 

@@ -5,7 +5,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import LoadingSpinner from "../../Components/UI/LoadingSpinner";
 import PageHeader from "../../Components/UI/PageHeader";
-import tenantApi, { centralUrl, tenantAsset } from "../../Services/ApiService";
+import tenantApi, { tenantAsset } from "../../Services/ApiService";
 import { useAlert } from "../../Context/AlertContext";
 import InfoTooltip from "../../Components/UI/InfoTooltip";
 import type { Driver } from "./Driver.types";
@@ -76,13 +76,13 @@ const DriverEditPage = () => {
         setLoading(true);
         const [driverRes, genders, bloodGroups, maritalStatuses, employmentTypes, statuses, fileTypes, states, vehicles, beacons] = await Promise.all([
           tenantApi.get(`/drivers/${id}`),
-          axios.get(`${centralUrl}/masters/forms/dropdowns/fields?type=common&field=gender`),
-          axios.get(`${centralUrl}/masters/forms/dropdowns/fields?type=common&field=blood_group`),
-          axios.get(`${centralUrl}/masters/forms/dropdowns/fields?type=common&field=marital_status`),
-          axios.get(`${centralUrl}/masters/forms/dropdowns/fields?type=common&field=employment_type`),
-          axios.get(`${centralUrl}/masters/forms/dropdowns/fields?type=common&field=status`),
-          axios.get(`${centralUrl}/masters/forms/dropdowns/fields?type=driver&field=file_type`),
-          axios.get(`${centralUrl}/masters/forms/dropdowns/states`),
+          tenantApi.get(`/masters/forms/dropdowns/fields?type=common&field=gender`),
+          tenantApi.get(`/masters/forms/dropdowns/fields?type=common&field=blood_group`),
+          tenantApi.get(`/masters/forms/dropdowns/fields?type=common&field=marital_status`),
+          tenantApi.get(`/masters/forms/dropdowns/fields?type=common&field=employment_type`),
+          tenantApi.get(`/masters/forms/dropdowns/fields?type=common&field=status`),
+          tenantApi.get(`/masters/forms/dropdowns/fields?type=driver&field=file_type`),
+          tenantApi.get(`/masters/forms/dropdowns/states`),
           tenantApi.get(`/active-vehicles/for/dropdown`),
           tenantApi.get(`/beacon-device/for/dropdown`),
         ]);
@@ -108,21 +108,23 @@ const DriverEditPage = () => {
         reset(prepped);
         if (prepped.license_insurance) replace(prepped.license_insurance);
 
+        const unwrap = (r: any) => Array.isArray(r.data) ? r.data : r.data?.data || [];
         setDropdowns({
-          genders: genders.data || [],
-          bloodGroups: bloodGroups.data || [],
-          maritalStatuses: maritalStatuses.data || [],
-          employmentTypes: employmentTypes.data || [],
-          statuses: statuses.data || [],
-          fileTypes: fileTypes.data || [],
-          states: states.data || [],
-          vehicles: vehicles.data || [],
-          beacons: beacons.data || [],
+          genders: unwrap(genders),
+          bloodGroups: unwrap(bloodGroups),
+          maritalStatuses: unwrap(maritalStatuses),
+          employmentTypes: unwrap(employmentTypes),
+          statuses: unwrap(statuses),
+          fileTypes: unwrap(fileTypes),
+          states: unwrap(states),
+          vehicles: unwrap(vehicles),
+          beacons: unwrap(beacons),
         });
 
         if (driver.state) {
-          const dRes = await axios.get(`${centralUrl}/masters/forms/dropdowns/districts/${driver.state}`);
-          setDistricts(dRes.data || []);
+          const dRes = await tenantApi.get(`/masters/forms/dropdowns/districts/${driver.state}`);
+          const d = Array.isArray(dRes.data) ? dRes.data : dRes.data?.data || [];
+          setDistricts(d);
         }
       } catch (error) {
         showAlert("Failed to load driver data.", "error");
@@ -136,7 +138,10 @@ const DriverEditPage = () => {
 
   useEffect(() => {
     if (!selectedState || loading) return;
-    axios.get(`${centralUrl}/masters/forms/dropdowns/districts/${selectedState}`).then(res => setDistricts(res.data || []));
+    tenantApi.get(`/masters/forms/dropdowns/districts/${selectedState}`).then(res => {
+      const d = Array.isArray(res.data) ? res.data : res.data?.data || [];
+      setDistricts(d);
+    }).catch(() => {});
   }, [selectedState, loading]);
 
   useEffect(() => {
@@ -331,7 +336,7 @@ const DriverEditPage = () => {
                     </label>
                    <select {...register("beacon_id")} className="form-select">
                      <option value="">No Binding</option>
-                     {dropdowns.beacons.map(b => <option key={b.id} value={b.imei_number}>{b.device_id}</option>)}
+                     {dropdowns.beacons.map(b => <option key={b.id} value={b.device_id}>{b.device_id}</option>)}
                    </select>
                 </div>
              </div>

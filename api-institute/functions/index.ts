@@ -31,6 +31,8 @@ import "./vehicles/byId";
 
 // Devices
 import "./devices/index";
+import "./devices/instgps";
+import "./devices/instbeacon";
 
 // Drivers
 import "./drivers/dropdowns";    // /active-vehicles/for/dropdown etc — before drivers/{id}

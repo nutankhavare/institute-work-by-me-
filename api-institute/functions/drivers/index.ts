@@ -30,7 +30,7 @@ app.http("driversIndex", {
 
         const countResult = await client.query(`
           SELECT COUNT(*) FROM schema1.institute_drivers
-          WHERE org_id = $1
+          WHERE org_id = $1::text
             AND ($2::text IS NULL OR status = $2)
             AND ($3::text IS NULL OR (
               first_name ILIKE '%' || $3 || '%' OR
@@ -39,7 +39,7 @@ app.http("driversIndex", {
               employee_id ILIKE '%' || $3 || '%' OR
               email ILIKE '%' || $3 || '%'
             ))
-        `, [token.org_id, status, search]);
+        `, [String(token.org_id), status, search]);
         const total = parseInt(countResult.rows[0].count, 10);
 
         const result = await client.query(`
@@ -79,10 +79,7 @@ app.http("driversIndex", {
         let profilePhotoUrl = null;
         if (files.profile_photo) {
           profilePhotoUrl = await uploadToBlob(
-            files.profile_photo.buffer, 
-            files.profile_photo.filename, 
-            files.profile_photo.mimetype, 
-            'drivers'
+            files.profile_photo.buffer, files.profile_photo.filename, files.profile_photo.mimetype, 'drivers'
           );
         }
 
@@ -101,38 +98,41 @@ app.http("driversIndex", {
             ) RETURNING *
           `, [
             String(token.org_id), fields.first_name, fields.last_name, fields.gender, 
-            fields.dob || null, fields.email, fields.mobile_number, fields.blood_group, 
+            fields.date_of_birth || null, fields.email, fields.mobile_number, fields.blood_group, 
             fields.marital_status, profilePhotoUrl, fields.employment_type, 
-            fields.employee_id, fields.address, fields.city, fields.district, 
-            fields.state, fields.pin_code, fields.assigned_vehicle_id, 
+            fields.employee_id, fields.address_line_1, fields.city, fields.district, 
+            fields.state, fields.pin_code, fields.vehicle || fields.assigned_vehicle_id, 
             fields.beacon_id, fields.status || 'Active', fields.remarks
           ]);
 
           const driverId = driverResult.rows[0].id;
 
-          await client.query(`
-            INSERT INTO schema1.institute_driver_license_insurance (
-              driver_id, number, issue_date, exp_date, type
-            ) VALUES (
-              $1, $2, $3, $4, $5
-            )
-          `, [
-            driverId, fields.dl_number, fields.dl_issue_date || null, 
-            fields.dl_expiry_date || null, fields.license_type
-          ]);
+          // Insert license/insurance if provided
+          if (fields.dl_number || fields.license_type) {
+            await client.query(`
+              INSERT INTO schema1.institute_driver_license_insurance (
+                driver_id, number, issue_date, exp_date, type
+              ) VALUES ($1, $2, $3, $4, $5)
+            `, [
+              driverId, fields.dl_number, fields.dl_issue_date || null, 
+              fields.dl_expiry_date || null, fields.license_type
+            ]);
+          }
 
           await client.query('COMMIT');
 
-          // Return combined data to match GET structure mostly
-          const fullResult = await client.query(`
-            SELECT d.*,
-              li.dl_number, li.dl_expiry_date, li.license_type
-            FROM schema1.institute_drivers d
-            LEFT JOIN schema1.institute_driver_license_insurance li ON li.driver_id = d.id
-            WHERE d.id = $1
-          `, [driverId]);
+          // Sync beacon assignment
+          if (fields.beacon_id) {
+            try {
+              await client.query(
+                `UPDATE schema1.institute_beacon SET assigned_to = $1, assigned_type = 'driver', synced_at = NOW()
+                 WHERE device_id = $2 AND allocated_to_org = $3::text`,
+                [fields.first_name + ' ' + (fields.last_name || ''), fields.beacon_id, String(token.org_id)]
+              );
+            } catch (_) { /* beacon table may not have data */ }
+          }
 
-          return ok(fullResult.rows[0]);
+          return ok(driverResult.rows[0]);
         } catch (txnError) {
           await client.query('ROLLBACK');
           throw txnError;
@@ -142,9 +142,8 @@ app.http("driversIndex", {
       return err(405, "Method not allowed");
     } catch (e: any) {
       ctx.error(e);
-      if (e.status) return err(e.status, e.message);
-      if (e.code === "23505") return err(409, "Driver or associated record already exists");
-      return err(500, "Internal server error");
+      if (e.code === "23505") return err(409, "Driver already exists");
+      return err(500, e.message || "Internal server error");
     } finally {
       client?.release();
     }

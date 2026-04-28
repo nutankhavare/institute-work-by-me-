@@ -23,15 +23,15 @@ app.http("rolesById", {
         const result = await client.query(`
           SELECT r.*, 
             COALESCE(
-              json_agg(json_build_object('id', p.id, 'name', p.action)) 
+              json_agg(json_build_object('id', p.id, 'name', p.name)) 
               FILTER (WHERE p.id IS NOT NULL), '[]'::json
-            ) as permission_objects 
+            ) as permissions 
           FROM schema1.institute_roles r 
           LEFT JOIN schema1.institute_permissions p 
             ON p.id::text = ANY(SELECT jsonb_array_elements_text(r.permissions)) 
-          WHERE r.id = $1 AND r.org_id = $2 
+          WHERE r.id = $1 AND r.org_id = $2::text 
           GROUP BY r.id
-        `, [roleId, token.org_id]);
+        `, [roleId, String(token.org_id)]);
 
         if (result.rows.length === 0) return err(404, "Role not found");
         return ok(result.rows[0]);
@@ -49,11 +49,11 @@ app.http("rolesById", {
             permissions = COALESCE($6::jsonb, permissions),
             status = COALESCE($7, status),
             updated_at = NOW()
-          WHERE id = $1 AND org_id = $2
+          WHERE id = $1 AND org_id = $2::text
           RETURNING *
         `, [
           roleId, 
-          token.org_id, 
+          String(token.org_id), 
           name, 
           department, 
           access_level, 
@@ -67,8 +67,8 @@ app.http("rolesById", {
 
       if (req.method === "DELETE") {
         const result = await client.query(
-          `DELETE FROM schema1.institute_roles WHERE id = $1 AND org_id = $2`,
-          [roleId, token.org_id]
+          `DELETE FROM schema1.institute_roles WHERE id = $1 AND org_id = $2::text`,
+          [roleId, String(token.org_id)]
         );
 
         if (result.rowCount === 0) return err(404, "Role not found");

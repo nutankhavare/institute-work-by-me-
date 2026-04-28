@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import LoadingSpinner from "../../Components/UI/LoadingSpinner";
 import PageHeader from "../../Components/UI/PageHeader";
-import tenantApi, { centralUrl } from "../../Services/ApiService";
+import tenantApi from "../../Services/ApiService";
 import { useAlert } from "../../Context/AlertContext";
 import InfoTooltip from "../../Components/UI/InfoTooltip";
 import type { Vehicle } from "./Vehicle.types";
@@ -109,20 +109,20 @@ const VehicleFormPage = ({ mode, vehicleId }: VehicleFormPageProps) => {
       try {
         setLoading(true);
         const [vt, ft, pt, ot, st, gd] = await Promise.all([
-          axios.get(`${centralUrl}/masters/forms/dropdowns/fields?type=vehicle&field=vehicle_type`),
-          axios.get(`${centralUrl}/masters/forms/dropdowns/fields?type=vehicle&field=fuel_type`),
-          axios.get(`${centralUrl}/masters/forms/dropdowns/fields?type=vehicle&field=permit_type`),
-          axios.get(`${centralUrl}/masters/forms/dropdowns/fields?type=vehicle&field=ownership_type`),
-          axios.get(`${centralUrl}/masters/forms/dropdowns/fields?type=common&field=status`),
+          tenantApi.get(`/masters/forms/dropdowns/fields?type=vehicle&field=vehicle_type`),
+          tenantApi.get(`/masters/forms/dropdowns/fields?type=vehicle&field=fuel_type`),
+          tenantApi.get(`/masters/forms/dropdowns/fields?type=vehicle&field=permit_type`),
+          tenantApi.get(`/masters/forms/dropdowns/fields?type=vehicle&field=ownership_type`),
+          tenantApi.get(`/masters/forms/dropdowns/fields?type=common&field=status`),
           tenantApi.get(`/gps-device/for/dropdown`),
         ]);
 
-        setVehicleTypes(vt.data || []);
-        setFuelTypes(ft.data || []);
-        setPermitTypes(pt.data || []);
-        setOwnershipTypes(ot.data || []);
-        setStatuses(st.data || []);
-        setBeacons(gd.data || []);
+        setVehicleTypes(Array.isArray(vt.data) ? vt.data : vt.data?.data || []);
+        setFuelTypes(Array.isArray(ft.data) ? ft.data : ft.data?.data || []);
+        setPermitTypes(Array.isArray(pt.data) ? pt.data : pt.data?.data || []);
+        setOwnershipTypes(Array.isArray(ot.data) ? ot.data : ot.data?.data || []);
+        setStatuses(Array.isArray(st.data) ? st.data : st.data?.data || []);
+        setBeacons(Array.isArray(gd.data) ? gd.data : gd.data?.data || []);
       } catch (error) {
         showAlert("Failed to load vehicle form data.", "error");
       } finally {
@@ -319,7 +319,7 @@ const VehicleFormPage = ({ mode, vehicleId }: VehicleFormPageProps) => {
                     </label>
                     <select {...register("gps_device")} className="form-select">
                       <option value="">Select Device</option>
-                      {gps.map(g => <option key={g.id} value={g.imei_number}>{g.device_id} ({g.imei_number})</option>)}
+                      {gps.map(g => <option key={g.id} value={g.device_id}>{g.device_id} ({g.sim_number})</option>)}
                    </select>
                 </div>
                 <div>

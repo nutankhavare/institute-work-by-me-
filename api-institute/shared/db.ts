@@ -18,5 +18,14 @@ export function getPool(): Pool {
 }
 
 export async function withTenant(client: PoolClient, orgId: number) {
-  await client.query(`SET LOCAL app.current_org_id = ${orgId}`);
+  // Validate orgId is a real number to prevent injection
+  const sanitized = Number(orgId);
+  if (!Number.isFinite(sanitized) || sanitized <= 0) {
+    throw new Error("Invalid org_id");
+  }
+  // Use set_config() with parameterized value — immune to SQL injection
+  await client.query(
+    `SELECT set_config('app.current_org_id', $1, false)`,
+    [String(sanitized)]
+  );
 }

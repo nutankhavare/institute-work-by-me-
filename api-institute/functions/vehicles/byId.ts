@@ -24,8 +24,8 @@ app.http("vehiclesById", {
       if (req.method === "GET") {
         const result = await client.query(`
           SELECT * FROM schema1.institute_vehicles
-          WHERE id = $1 AND org_id = $2
-        `, [vehicleId, token.org_id]);
+          WHERE id = $1 AND org_id = $2::text
+        `, [vehicleId, String(token.org_id)]);
 
         if (result.rows.length === 0) return err(404, "Vehicle not found");
         return ok(result.rows[0]);
@@ -34,17 +34,9 @@ app.http("vehiclesById", {
       if (req.method === "PUT") {
         const { fields, files } = await parseMultipart(req);
         
-        const docUploads: Record<string, string | undefined> = {
-          rc_book_doc: undefined,
-          insurance_doc: undefined,
-          fitness_doc: undefined,
-          pollution_doc: undefined
-        };
-
+        const docUploads: Record<string, string | undefined> = {};
         for (const [key, file] of Object.entries(files)) {
-          if (key in docUploads) {
-            docUploads[key] = await uploadToBlob(file.buffer, file.filename, file.mimetype, 'vehicles');
-          }
+          docUploads[key] = await uploadToBlob(file.buffer, file.filename, file.mimetype, 'vehicles');
         }
 
         const result = await client.query(`
@@ -53,72 +45,89 @@ app.http("vehiclesById", {
             model = COALESCE($4, model),
             manufacturer = COALESCE($5, manufacturer),
             vehicle_type = COALESCE($6, vehicle_type),
-            year = COALESCE($7, year),
+            manufacturing_year = COALESCE($7, manufacturing_year),
             fuel_type = COALESCE($8, fuel_type),
             seating_capacity = COALESCE($9, seating_capacity),
-            colour = COALESCE($10, colour),
+            vehicle_color = COALESCE($10, vehicle_color),
             status = COALESCE($11, status),
             gps_device_id = COALESCE($12, gps_device_id),
-            sim_number = COALESCE($13, sim_number),
-            gps_install_date = COALESCE($14, gps_install_date),
-            assigned_driver = COALESCE($15, assigned_driver),
+            gps_sim_number = COALESCE($13, gps_sim_number),
+            gps_installation_date = COALESCE($14, gps_installation_date),
+            assigned_driver_id = COALESCE($15, assigned_driver_id),
             ownership_type = COALESCE($16, ownership_type),
             owner_name = COALESCE($17, owner_name),
-            owner_contact = COALESCE($18, owner_contact),
-            insurance_provider = COALESCE($19, insurance_provider),
-            insurance_policy_no = COALESCE($20, insurance_policy_no),
-            insurance_expiry = COALESCE($21, insurance_expiry),
+            owner_contact_number = COALESCE($18, owner_contact_number),
+            insurance_provider_name = COALESCE($19, insurance_provider_name),
+            insurance_policy_number = COALESCE($20, insurance_policy_number),
+            insurance_expiry_date = COALESCE($21, insurance_expiry_date),
             permit_type = COALESCE($22, permit_type),
             permit_number = COALESCE($23, permit_number),
-            permit_issue = COALESCE($24, permit_issue),
-            permit_expiry = COALESCE($25, permit_expiry),
-            fitness_cert_no = COALESCE($26, fitness_cert_no),
-            fitness_expiry = COALESCE($27, fitness_expiry),
-            pollution_cert_no = COALESCE($28, pollution_cert_no),
-            pollution_expiry = COALESCE($29, pollution_expiry),
-            last_service = COALESCE($30, last_service),
-            next_service = COALESCE($31, next_service),
-            km_driven = COALESCE($32, km_driven),
+            permit_issue_date = COALESCE($24, permit_issue_date),
+            permit_expiry_date = COALESCE($25, permit_expiry_date),
+            fitness_certificate_number = COALESCE($26, fitness_certificate_number),
+            fitness_expiry_date = COALESCE($27, fitness_expiry_date),
+            pollution_certificate_number = COALESCE($28, pollution_certificate_number),
+            pollution_expiry_date = COALESCE($29, pollution_expiry_date),
+            last_service_date = COALESCE($30, last_service_date),
+            next_service_due_date = COALESCE($31, next_service_due_date),
+            kilometers_driven = COALESCE($32, kilometers_driven),
             fire_extinguisher = COALESCE($33, fire_extinguisher),
             first_aid_kit = COALESCE($34, first_aid_kit),
-            cctv = COALESCE($35, cctv),
-            panic_button = COALESCE($36, panic_button),
+            cctv_installed = COALESCE($35, cctv_installed),
+            panic_button_installed = COALESCE($36, panic_button_installed),
             rc_book_doc = COALESCE($37, rc_book_doc),
             insurance_doc = COALESCE($38, insurance_doc),
-            fitness_doc = COALESCE($39, fitness_doc),
-            pollution_doc = COALESCE($40, pollution_doc),
+            fitness_certificate = COALESCE($39, fitness_certificate),
+            puc_doc = COALESCE($40, puc_doc),
+            remarks = COALESCE($41, remarks),
             updated_at = NOW()
-          WHERE id = $1 AND org_id = $2
+          WHERE id = $1 AND org_id = $2::text
           RETURNING *
         `, [
-          vehicleId, token.org_id, 
-          fields.vehicle_number, fields.model, fields.manufacturer, 
-          fields.vehicle_type, fields.year ? parseInt(fields.year) : null, fields.fuel_type, 
-          fields.seating_capacity ? parseInt(fields.seating_capacity) : null, fields.colour, 
-          fields.status, fields.gps_device_id, fields.sim_number, fields.gps_install_date || null, 
-          fields.assigned_driver, fields.ownership_type, fields.owner_name, fields.owner_contact, 
-          fields.insurance_provider, fields.insurance_policy_no, fields.insurance_expiry || null, 
-          fields.permit_type, fields.permit_number, fields.permit_issue || null, fields.permit_expiry || null, 
-          fields.fitness_cert_no, fields.fitness_expiry || null, fields.pollution_cert_no, 
-          fields.pollution_expiry || null, fields.last_service || null, fields.next_service || null, 
-          fields.km_driven ? parseInt(fields.km_driven) : null, 
-          fields.fire_extinguisher !== undefined ? fields.fire_extinguisher === 'true' : null, 
-          fields.first_aid_kit !== undefined ? fields.first_aid_kit === 'true' : null, 
-          fields.cctv !== undefined ? fields.cctv === 'true' : null, 
-          fields.panic_button !== undefined ? fields.panic_button === 'true' : null, 
-          docUploads.rc_book_doc, docUploads.insurance_doc, docUploads.fitness_doc, docUploads.pollution_doc
+          vehicleId, String(token.org_id),
+          fields.vehicle_number, fields.model, fields.manufacturer,
+          fields.vehicle_type, fields.manufacturing_year, fields.fuel_type,
+          fields.seating_capacity ? parseInt(fields.seating_capacity) : null, fields.vehicle_color,
+          fields.status, fields.gps_device_id, fields.gps_sim_number,
+          fields.gps_installation_date || null, fields.assigned_driver_id,
+          fields.ownership_type, fields.owner_name, fields.owner_contact_number,
+          fields.insurance_provider_name, fields.insurance_policy_number, fields.insurance_expiry_date || null,
+          fields.permit_type, fields.permit_number, fields.permit_issue_date || null, fields.permit_expiry_date || null,
+          fields.fitness_certificate_number, fields.fitness_expiry_date || null,
+          fields.pollution_certificate_number, fields.pollution_expiry_date || null,
+          fields.last_service_date || null, fields.next_service_due_date || null,
+          fields.kilometers_driven ? parseInt(fields.kilometers_driven) : null,
+          fields.fire_extinguisher, fields.first_aid_kit, fields.cctv_installed, fields.panic_button_installed,
+          docUploads.rc_book_doc, docUploads.insurance_doc, docUploads.fitness_certificate, docUploads.puc_doc,
+          fields.remarks
         ]);
 
         if (result.rows.length === 0) return err(404, "Vehicle not found");
+
+        // Sync GPS device
+        try {
+          await client.query(
+            `UPDATE schema1.institute_gps SET assigned_to = NULL, assigned_type = NULL, synced_at = NOW()
+             WHERE assigned_to = $1 AND assigned_type = 'vehicle' AND allocated_to_org = $2::text`,
+            [result.rows[0].vehicle_number, String(token.org_id)]
+          );
+          if (fields.gps_device_id) {
+            await client.query(
+              `UPDATE schema1.institute_gps SET assigned_to = $1, assigned_type = 'vehicle', synced_at = NOW()
+               WHERE device_id = $2 AND allocated_to_org = $3::text`,
+              [result.rows[0].vehicle_number, fields.gps_device_id, String(token.org_id)]
+            );
+          }
+        } catch (_) { /* gps table may not have data */ }
+
         return ok(result.rows[0]);
       }
 
       if (req.method === "DELETE") {
         const result = await client.query(
-          `DELETE FROM schema1.institute_vehicles WHERE id = $1 AND org_id = $2`,
-          [vehicleId, token.org_id]
+          `DELETE FROM schema1.institute_vehicles WHERE id = $1 AND org_id = $2::text`,
+          [vehicleId, String(token.org_id)]
         );
-
         if (result.rowCount === 0) return err(404, "Vehicle not found");
         return ok({ deleted: true });
       }
@@ -126,9 +135,8 @@ app.http("vehiclesById", {
       return err(405, "Method not allowed");
     } catch (e: any) {
       ctx.error(e);
-      if (e.status) return err(e.status, e.message);
       if (e.code === "23505") return err(409, "Vehicle already exists");
-      return err(500, "Internal server error");
+      return err(500, e.message || "Internal server error");
     } finally {
       client?.release();
     }

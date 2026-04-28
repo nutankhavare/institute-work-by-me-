@@ -17,7 +17,7 @@ import EmptyState from "../../Components/UI/EmptyState";
 import { useAlert } from "../../Context/AlertContext";
 import type { FormDropdown } from "../../Types/Index";
 import type { TravellerForm } from "./Traveler.types";
-import tenantApi, { centralAsset, centralUrl } from "../../Services/ApiService";
+import tenantApi, { centralAsset } from "../../Services/ApiService";
 import axios from "axios";
 import { DUMMY_USER_IMAGE } from "../../Utils/Toolkit";
 import SelectInputField from "../../Components/Form/SelectInputField";
@@ -50,18 +50,19 @@ const TravellerEditPage = () => {
                 setLoading(true);
                 const [travellerRes, genderRes, relationshipRes, bloodGroupRes, statusRes] = await Promise.all([
                     tenantApi.get(`/travellers/${id}`),
-                    axios.get(`${centralUrl}/masters/forms/dropdowns/fields?field=gender`),
-                    axios.get(`${centralUrl}/masters/forms/dropdowns/fields?field=relationship`),
-                    axios.get(`${centralUrl}/masters/forms/dropdowns/fields?field=blood_group`),
-                    axios.get(`${centralUrl}/masters/forms/dropdowns/fields?field=status`),
+                    tenantApi.get(`/masters/forms/dropdowns/fields?type=common&field=gender`),
+                    tenantApi.get(`/masters/forms/dropdowns/fields?type=common&field=relationship`),
+                    tenantApi.get(`/masters/forms/dropdowns/fields?type=common&field=blood_group`),
+                    tenantApi.get(`/masters/forms/dropdowns/fields?type=common&field=status`),
                 ]);
 
                 const traveller = travellerRes.data.data;
+                const unwrap = (r: any) => Array.isArray(r.data) ? r.data : r.data?.data || [];
 
-                setGenders(genderRes.data || []);
-                setRelationships(relationshipRes.data || []);
-                setBloodGroups(bloodGroupRes.data || []);
-                setStatuses(statusRes.data || []);
+                setGenders(unwrap(genderRes));
+                setRelationships(unwrap(relationshipRes));
+                setBloodGroups(unwrap(bloodGroupRes));
+                setStatuses(unwrap(statusRes));
                 setCurrentPhoto(traveller.profile_photo);
 
                 // Populate Form (exclude profile_photo file field)

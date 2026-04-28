@@ -72,35 +72,45 @@ app.http("employeesIndex", {
       if (req.method === "POST") {
         const { fields, files } = await parseMultipart(req);
         
-        let profilePhotoUrl = null;
-        if (files.profilePhoto) {
-          profilePhotoUrl = await uploadToBlob(
-            files.profilePhoto.buffer, 
-            files.profilePhoto.filename, 
-            files.profilePhoto.mimetype, 
-            'employees'
-          );
+        let photoUrl = null;
+        if (files.photo) {
+          photoUrl = await uploadToBlob(files.photo.buffer, files.photo.filename, files.photo.mimetype, 'employees');
+        }
+
+        // Parse roles from "roles[]" fields
+        const rolesArr: string[] = [];
+        for (const [key, val] of Object.entries(fields)) {
+          if (key === 'roles[]' || key.startsWith('roles[')) {
+            rolesArr.push(String(val));
+          }
         }
 
         const result = await client.query(`
           INSERT INTO schema1.institute_employees (
-            org_id, first_name, last_name, gender, email, phone, designation, 
-            department, employment_type, joining_date, date_of_birth, address_line_1, address_line_2, 
-            landmark, state, district, city, pin_code, primary_person_name, primary_person_phone_1, 
-            primary_person_email, bank_name, account_holder_name, account_number, ifsc_code, 
+            org_id, employee_id, first_name, last_name, gender, marital_status,
+            date_of_birth, joining_date, employment_type, designation, email, phone,
+            address_line_1, address_line_2, landmark, state, district, city, pin_code,
+            primary_person_name, primary_person_phone_1, primary_person_email,
+            bank_name, account_holder_name, account_number, ifsc_code,
             photo, roles, status, remarks
           ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 
-            $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+            $13, $14, $15, $16, $17, $18, $19,
+            $20, $21, $22,
+            $23, $24, $25, $26,
+            $27, $28::jsonb, $29, $30
           ) RETURNING *
         `, [
-          String(token.org_id), fields.first_name, fields.last_name, fields.gender, fields.email, 
-          fields.phone, fields.designation, fields.department, fields.employment_type, 
-          fields.joining_date || null, fields.dob || null, fields.address, fields.address2, 
-          fields.landmark, fields.state, fields.district, fields.city, fields.pin_code, 
-          fields.emergency_name, fields.emergency_phone, fields.emergency_email, fields.bank_name, 
-          fields.account_holder, fields.account_number, fields.ifsc, profilePhotoUrl, 
-          JSON.stringify(fields.role_id ? [fields.role_id] : []), fields.status || 'Active', fields.remarks
+          String(token.org_id), fields.employee_id, fields.first_name, fields.last_name,
+          fields.gender, fields.marital_status,
+          fields.date_of_birth || null, fields.joining_date || null,
+          fields.employment_type, fields.designation, fields.email, fields.phone,
+          fields.address_line_1, fields.address_line_2, fields.landmark,
+          fields.state, fields.district, fields.city, fields.pin_code,
+          fields.primary_person_name, fields.primary_person_phone_1, fields.primary_person_email,
+          fields.bank_name, fields.account_holder_name, fields.account_number, fields.ifsc_code,
+          photoUrl, JSON.stringify(rolesArr.length > 0 ? rolesArr : (fields.roles ? [fields.roles] : [])),
+          fields.status || 'Active', fields.remarks
         ]);
 
         return ok(result.rows[0]);
@@ -109,9 +119,8 @@ app.http("employeesIndex", {
       return err(405, "Method not allowed");
     } catch (e: any) {
       ctx.error(e);
-      if (e.status) return err(e.status, e.message);
-      if (e.code === "23505") return err(409, "Record already exists");
-      return err(500, "Internal server error");
+      if (e.code === "23505") return err(409, "Employee already exists");
+      return err(500, e.message || "Internal server error");
     } finally {
       client?.release();
     }
